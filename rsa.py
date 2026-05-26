@@ -1,24 +1,29 @@
 import random 
 
 def gcd_extended_euclidean(a, b, x, y):
-
     # Base Case 
+    # gcd(0, b) = b --> 0*x + b*y = b --> x = 0, y = 1
     if a == 0: 
         x[0] = 0
         y[0] = 1
         return b 
-
+    
+    # x1 and y1 are coefficients of b%a and a respectively
+    # (b%a)*x1 + a*y1 = gcd(b%a, a) = gcd(a, b)
     x1, y1 = [0], [0]
     gcd = gcd_extended_euclidean(b % a, a, x1, y1)
 
-    # Update x and y using results of 
-    # recursive call 
+    # since (b%a)*x1 + a*y1 = gcd and b%a = b - (b//a)*a
+    # we can rewrite it as: (b - (b//a)*a)*x1 + a*y1 = gcd 
+    # distribute x1: b*x1 - (b//a)*a*x1 + a*y1 = gcd
+    # group a terms and b terms: b*x1 + a*(y1 - (b//a)*x1) = gcd
+    # since a*x + b*y = gcd, we can see that x = y1 - (b//a)*x1 and y = x1
     x[0] = y1[0] - (b // a) * x1[0] 
     y[0] = x1[0] 
     return gcd 
 
 def find_gcd_extended(a, b):
-    x, y = [1], [1]
+    x, y = [1], [1] # Initialize x and y as lists to allow modification inside the function (pass by reference)
     gcd = gcd_extended_euclidean(a, b, x, y)
     return gcd, x[0], y[0]
 
@@ -36,7 +41,7 @@ def generate_prime_candidate(length):
     # Apply Bitwise Masks:
     # Set the Lowest Significant Bit to 1 (ensures the number is odd)
     # Set the Most Significant Bit to 1 (ensures it is exactly 'length' bits long)
-    p |= (1 << length - 1) | 1
+    p |= (1 << length - 1) | 1  # p = p OR (100...001 in binary) 
     return p
 
 def miller_rabin(n, k=40):
@@ -44,7 +49,7 @@ def miller_rabin(n, k=40):
     if n == 2 or n == 3: return True
     if n <= 1 or n % 2 == 0: return False
 
-    # Find r and d such that n - 1 = 2^r * d (where d is odd)
+    # Find r and d such that n - 1 = 2^r * d (where d is odd and n-1 is even)
     r, d = 0, n - 1
     while d % 2 == 0:
         r += 1
@@ -62,6 +67,12 @@ def miller_rabin(n, k=40):
             continue
             
         # Inner loop: square x continuously
+        # if x is squared r times, we end up calculating a^(n-1) % n, which should be 1 if n is prime (Fermat’s Little Theorem)
+        # while x is being squared r-1 times: 
+        # if at any point x becomes n-1, it means the next squaring will yield 1 which is consistent with n being prime
+        # otherwise, if x never becomes n-1, it means that even if the next squaring yields 1
+        # it is not consistent with n being prime, because we should have hit n-1 at some point before that
+        # which refers to the square root of 1 mod n being either 1 or -1 (n-1) for prime n
         for _ in range(r - 1):
             x = modular_pow(x, 2, n)
             if x == n - 1:
