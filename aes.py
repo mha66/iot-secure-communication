@@ -146,3 +146,129 @@ class AES:
                 round_key_words[4*i + j + 1] = round_key_words[4*i - 4 + j + 1] ^ round_key_words[4*i + j]
 
         return round_key_words
+    
+
+    def sub_bytes(self, input_state, inverse=False):
+        sub_byte = lambda byte : self.sub_byte(byte, inverse)
+        output_state = np.vectorize(sub_byte)(input_state)
+        return output_state
+    
+    def shift_rows(self, input_state, inverse=False):
+        output_state = np.copy(input_state)
+        for i, row in enumerate(input_state):
+            output_state[i] = np.roll(row, shift = -i if not inverse else i)
+        return output_state
+
+    def mix_columns(self, input_state, inverse=False):
+        output_state = np.copy(input_state)
+        for j in range(input_state.shape[1]):
+            for i in range(self.MIX_COLS_MATRIX.shape[0] if not inverse else self.INV_MIX_COLS_MATRIX.shape[0]):
+                row = self.MIX_COLS_MATRIX[i] if not inverse else self.INV_MIX_COLS_MATRIX[i]
+                column = input_state[:, j]
+                result = np.uint8(0x00)
+                for k in range(len(row)):
+                    result = result ^ mul_GF256(row[k], column[k])
+                output_state[i, j] = result
+        return output_state
+    
+    def add_round_key(self, input_state, round_key):
+        output_state = input_state ^ round_key
+        return output_state
+    
+
+    def one_round_encrypt(self, initial_state, round=0, skip_mix_cols=False):
+        sub_output_state = self.sub_bytes(initial_state)
+        shift_output_state = self.shift_rows(sub_output_state)
+        mix_output_state = self.mix_columns(shift_output_state) if not skip_mix_cols else shift_output_state
+
+        round_key = self.round_key_words[4*round : 4*round+4].T
+        final_state = self.add_round_key(mix_output_state, round_key)
+
+        return final_state
+    
+    def all_rounds_encrypt(self, initial_state):
+        round_state = self.add_round_key(initial_state, self.key)
+
+        for i in range(1, self.rounds+1):
+            round_state = self.one_round_encrypt(initial_state=round_state, round=i, skip_mix_cols=i==self.rounds)
+            
+        return round_state
+    
+    def cbc_encrypt(self, plaintext:str):
+        iv = os.urandom(16) # Generate a random 16-byte IV for this message
+        plaintext_bytes = plaintext.encode('utf-8')
+        padded_plaintext = pkcs7_pad(plaintext_bytes)
+
+        ciphertext_bytes = bytearray()
+        # For the first block, XOR with IV. For subsequent blocks, XOR with previous ciphertext block
+        previous_block = np.frombuffer(iv, dtype=np.uint8).reshape((4,4), order='F')
+
+        for i in range(0, len(padded_plaintext), 16):
+            current_block = padded_plaintext[i:i+16]
+            block_state = np.array(list(current_block), dtype=np.uint8).reshape(4, 4, order='F')
+            input_state = block_state ^ previous_block
+            encrypted_block = self.all_rounds_encrypt(input_state)
+            ciphertext_bytes.extend(encrypted_block.flatten(order='F'))
+            previous_block = encrypted_block
+
+        return iv, ciphertext_bytes
+
+    def one_round_decrypt(self, initial_state, round=0, skip_mix_cols=False):
+        shift_output_state = self.shift_rows(initial_state, inverse=True)
+        sub_output_state = self.sub_bytes(shift_output_state, inverse=True)
+
+        expanded_key_size = len(self.round_key_words)
+        round_key = self.round_key_words[expanded_key_size - 4*round - 4 : expanded_key_size - 4*round].T
+        add_key_state = self.add_round_key(sub_output_state, round_key)
+
+        mix_output_state = self.mix_columns(add_key_state, inverse=True) if not skip_mix_cols else add_key_state
+
+        return mix_output_state
+    
+    def all_rounds_decrypt(self, initial_state):
+        expanded_key_size = len(self.round_key_words)
+        initial_round_key = self.round_key_words[expanded_key_size - 4 : expanded_key_size].T
+        round_state = self.add_round_key(initial_state, initial_round_key)
+
+        for i in range(1, self.rounds+1):
+            round_state = self.one_round_decrypt(initial_state=round_state, round=i, skip_mix_cols=i==self.rounds)
+            
+        return round_state
+    
+    def cbc_decrypt(self, iv : bytes, ciphertext_bytes: bytes):
+        decrypted_bytes = bytearray()
+        if isinstance(iv, bytes):
+            previous_block = np.frombuffer(iv, dtype=np.uint8).reshape((4,4), order='F')
+        else:
+            previous_block = np.array(iv, dtype=np.uint8).reshape((4,4), order='F')
+
+        for i in range(0, len(ciphertext_bytes), 16):
+            current_block = ciphertext_bytes[i:i+16]
+            block_state = np.array(list(current_block), dtype=np.uint8).reshape(4, 4, order='F')
+            decrypted_block = self.all_rounds_decrypt(block_state)
+            plaintext_block = decrypted_block ^ previous_block
+            decrypted_bytes.extend(plaintext_block.flatten(order='F'))
+            previous_block = block_state
+
+        unpadded_plaintext = pkcs7_unpad(decrypted_bytes)
+        return unpadded_plaintext.decode('utf-8')
+
+
+
+def main():
+    aes = AES(rounds=10)
+    iv, ciphertext = aes.cbc_encrypt("This is a test for Advanced Encryption Standard")
+
+    print("IV:", iv)
+    print("Ciphertext:", ciphertext)
+
+    decrypted_text = aes.cbc_decrypt(iv, ciphertext)
+    print("Decrypted Text:", decrypted_text)
+
+if __name__ == "__main__":
+    main()
+    
+
+
+
+    
