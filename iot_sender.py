@@ -6,7 +6,7 @@ import random
 from rsa import RSA
 from aes import AES
 
-SERVER_IP = '192.168.1.19' # REPLACE WITH SERVER'S IP ADDRESS OR 127.0.0.1 FOR LOCAL TESTING
+SERVER_IP = '127.0.0.1' # REPLACE WITH SERVER'S IP ADDRESS OR 127.0.0.1 FOR LOCAL TESTING
 PORT = 65432
 
 def simulate_power_sensor_reading():
