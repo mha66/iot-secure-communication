@@ -55,10 +55,14 @@ python iot_receiver_gui.py
 ```
 
 ### 2. Configure the Sender (Sensor Node)
-Open `iot_sender.py` in a text editor. By default, `SERVER_IP` is hardcoded to `'192.168.1.19'`. 
-* If you are running both scripts on the same machine, **change this to `127.0.0.1`**:
+Open `iot_sender.py` in a text editor. By default, `SERVER_IP` is hardcoded to `'127.0.0.1'`. 
+* If you are running both scripts on the same machine, **keep this as `127.0.0.1`**:
   ```python
   SERVER_IP = '127.0.0.1' 
+  ```
+* Otherwise, change it to the IP address of the device running iot_receiver_gui.py:
+  ```python
+  SERVER_IP = '192.168.1.19'
   ```
 
 ### 3. Start the Sender (Sensor Node)
@@ -91,10 +95,13 @@ Behind the scenes, the sender generates a JSON payload similar to this:
 ### 🔹 Receiver (GUI Dashboard & Log)
 When the sender connects and transmits, the Tkinter dashboard will update automatically. 
 
-**GUI Dashboard in Normal State:**
+**GUI Dashboard in Normal State:** </br>
 <img style="width: auto; height: 700px;" alt="Screenshot 2026-05-26 005117" src="https://github.com/user-attachments/assets/931f2bd1-9482-42a7-a592-33c2ee7ab41b" />
 
-**GUI Dashboard in Alert State:**
+**GUI Dashboard in Alert State:** </br>
 <img style="width: auto; height: 700px;" alt="Screenshot 2026-05-26 005136" src="https://github.com/user-attachments/assets/c4e0d5d6-dfce-43fc-98bc-e73624f5cf08" />
+
+**IoT Sender terminal on a Raspberry Pi:** </br>
+<img width="1920" height="1080" alt="Screenshot 2026-05-29 00-11-30" src="https://github.com/user-attachments/assets/524383b1-00c3-474a-8309-5548b3bacb1d" />
 
 
